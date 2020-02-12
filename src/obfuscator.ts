@@ -203,7 +203,8 @@ export default class Obfuscator {
 							break
 						}
 						
-						// dealing with various declarations. also, lol
+						// dealing with various accesses. usually, this code is triggered when a local/global variable is referenced
+						// i don't want to have a default clause that encompasses all of this, because this isn't all the remaining "kinds" left. these are the kinds that are compatible with the code ran in the case itself. other kinds not included in the entire switch statement might not be compatible with the code ran in the case. in order to reduce errors and make bug checking easier, it is better to list out the 5000 different kinds that are compatible with the code
 						case ts.SyntaxKind.BinaryExpression:
 						case ts.SyntaxKind.VariableDeclaration:
 						case ts.SyntaxKind.Parameter:
