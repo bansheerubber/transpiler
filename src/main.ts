@@ -7,7 +7,6 @@ import ImportFixer from "./importFixer";
 import * as fs from "fs"
 import StringNormalizer from "./stringNormalizer";
 import FileCopy from "./fileCopy";
-import Rust from "./rust";
 
 ObfuscationMap.root = new ObfuscationRoot(undefined, "", undefined, true)
 
@@ -44,7 +43,7 @@ if(fs.existsSync(inDirectory)) {
 	}
 	readDir(inDirectory)
 
-	console.log("Transpiler: r16")
+	console.log("Transpiler: r20")
 
 	if(obfuscate) {
 		console.log("Generating obfuscation tree...")

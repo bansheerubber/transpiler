@@ -5,14 +5,24 @@ export default class ImportFixer {
 	public static async readFile(fileName: string, directory: string, inDirectory: string, outDirectory: string): Promise<void> {
 		fs.readFile(fileName, async (error, buffer) => {
 			let output = buffer.toString()
-			let lines = output.split("\r\n")
+
+			let lineEnding = "\n"
+			if((output.match(/\r\n/g) || []).length != 0) {
+				lineEnding = "\r\n"
+			}
+			let lines = output.split(lineEnding)
 
 			for(let line of lines) {
 				if(line.match(/const \w+ = require\("\.+\/.+(?=\"\))/)) {
 					let file = `${directory.replace(outDirectory, inDirectory)}/${line.match(/(?<=").+(?=")/)}.ts`
 
-					if(fs.existsSync(file)) {
+					// last part in if statement accounts for tsx files
+					if(fs.existsSync(file) || fs.existsSync(file = `${directory.replace(outDirectory, inDirectory)}/${line.match(/(?<=").+(?=")/)}.tsx`)) {
 						let defaultExport = await this.getDefaultExportName(file)
+
+						if(fileName.indexOf("custom/main.js") != -1) {
+							console.log(`default export of ${file}: ${defaultExport}`)
+						}
 
 						if(defaultExport) {
 							let replaceWord = line.match(/(?<=const ).+(?= \=)/g)[0]
@@ -20,6 +30,9 @@ export default class ImportFixer {
 							// check to see how many times the word appears in the file
 							if(output.match(new RegExp(replaceWord, "g")).length > 1) {
 								output = output.replace(new RegExp(replaceWord, "g"), ObfuscationMap.getObfuscatedClassString(defaultExport))
+								if(fileName.indexOf("custom/main.js") != -1) {
+									console.log(`import fixer replaced ${replaceWord} in file ${fileName}`)
+								}
 							}
 							else {
 								output = output.replace(line, "") // if we only have 1 instnace of this import name, then remove the import because we don't need it
@@ -67,7 +80,7 @@ export default class ImportFixer {
 	public static async readAllFiles(directory: string, inDirectory: string, outDirectory: string): Promise<void> {
 		fs.readdir(`${directory}/`, (error, files) => {
 			for(let file of files) {
-				if(file.indexOf(".js") != -1) {
+				if(file.match(/\.js$/g)) {
 					this.readFile(`${directory}/${file}`, directory, inDirectory, outDirectory)
 				}
 				else if(file.indexOf(".") == -1) {

@@ -50,10 +50,18 @@ export default class Obfuscator {
 											node = changeNode(ts.createIdentifier(ObfuscationMap.getObfuscatedStringFromScope(obfuscatedElements, node.getText())))
 										}
 										else if(property.symbol && (property.symbol as any).parent) {
-											let type = Obfuscator.checker.getTypeAtLocation((property.symbol as any).parent.getDeclarations()[0]) as any
-											let obfuscatedElements2 = ObfuscationMap.getObfuscatedClassesFromType(Obfuscator.typeToString(type))
-											if(obfuscatedElements2[0]) {
-												node = changeNode(ts.createIdentifier(ObfuscationMap.getObfuscatedStringFromScope(obfuscatedElements2, node.getText())))
+											try {
+												let type = Obfuscator.checker.getTypeAtLocation((property.symbol as any).parent.getDeclarations()[0]) as any
+												let obfuscatedElements2 = ObfuscationMap.getObfuscatedClassesFromType(Obfuscator.typeToString(type))
+												if(obfuscatedElements2[0]) {
+													node = changeNode(ts.createIdentifier(ObfuscationMap.getObfuscatedStringFromScope(obfuscatedElements2, node.getText())))
+												}
+											}
+											// ReactDOM errors out here, and breaks the typescript API. idk why, its been months since i understood this code, so fuck it here's a try/catch
+											catch {
+												// if it breaks, treat the reference like a local/global variable
+												let newNode = Obfuscator.createLocalIdentifier(node)
+												node = newNode != undefined ? newNode : node
 											}
 										}
 									}
@@ -163,7 +171,7 @@ export default class Obfuscator {
 								node = temp(obfuscatedClass, node)
 							}
 							else {
-								// try to found the class based on the properties we define in our object
+								// try to find the class based on the properties we define in our object
 								let potentialInterface = ObfuscationMap.findClassByProperties(Array.from(node.parent.parent.symbol.members.keys()))
 								if(potentialInterface) {
 									node = temp([potentialInterface], node)
@@ -176,9 +184,26 @@ export default class Obfuscator {
 							break
 						}
 
-						// dealing with type references
+						case ts.SyntaxKind.JsxAttribute: {
+							try {
+								let className = node.parent.parent.parent.tagName.getText()
+								let obfuscatedClass = ObfuscationMap.getObfuscatedClass(className)
+								if(obfuscatedClass) {
+									let propertyClassName = obfuscatedClass.typeArguments[0]
+									let propertyClass = ObfuscationMap.getObfuscatedClass(propertyClassName)
+									let obfuscated = ObfuscationMap.getObfuscatedStringFromScope([propertyClass], node.getText())
+									
+									let newNode = changeNode(ts.createIdentifier(obfuscated))
+									node = newNode != undefined ? newNode : node
+								}
+							}
+							catch {
+
+							}
+							break
+						}
 						
-						// dealing with various declarations
+						// dealing with various declarations. also, lol
 						case ts.SyntaxKind.BinaryExpression:
 						case ts.SyntaxKind.VariableDeclaration:
 						case ts.SyntaxKind.Parameter:
@@ -213,7 +238,8 @@ export default class Obfuscator {
 						case ts.SyntaxKind.TypeAssertionExpression:
 						case ts.SyntaxKind.ArrayLiteralExpression:
 						case ts.SyntaxKind.ExportAssignment:
-						case ts.SyntaxKind.TypeReference: {
+						case ts.SyntaxKind.TypeReference: 
+						case ts.SyntaxKind.JsxExpression: {
 							// if we're just a stray identifier inside one of the kinds of expressions, that means we're probably a local variable. look us up	
 							var newNode = Obfuscator.createLocalIdentifier(node)
 							node = newNode != undefined ? newNode : node
@@ -221,6 +247,7 @@ export default class Obfuscator {
 						}
 					}
 				}
+				// this code replaces a specially formatted string with an obfuscated property name
 				else if(node.kind == ts.SyntaxKind.StringLiteral) {
 					let match = node.text.match(/(?<=%\[)(\w+):\W(\w+)(?=\])/g)
 					if(match) {

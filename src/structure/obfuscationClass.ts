@@ -14,6 +14,7 @@ interface InheritedClass {
 export default class ObfuscationClass extends ObfuscationElement {
 	public isAnonymous: boolean = false
 	public inherits: Set<InheritedClass> = new Set<InheritedClass>() // list of all classes we inherit
+	public typeArguments: string[] = []
 
 	private hasInheritedScope: boolean = false
 

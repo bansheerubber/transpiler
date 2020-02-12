@@ -290,12 +290,12 @@ export default class ObfuscationMap {
 		return name.replace(/,/g, "")
 	}
 
-	public static echoSourceFile(node: ts.Node): void {
+	public static echoSourceFile(node: ts.Node, force: boolean = false): void {
 		let parent = node
 		while(parent = parent.parent) {
 			if(parent.kind == ts.SyntaxKind.SourceFile) {
 				let sourceFile = parent as ts.SourceFile
-				if(sourceFile.fileName != this.currentSourceFile) {
+				if(sourceFile.fileName != this.currentSourceFile || force) {
 					let lines = fs.readFileSync(sourceFile.fileName).toString().split("\n").length
 					this.totalLines += lines
 					console.log(`\x1B[91mnow traversing\x1B[0m ${sourceFile.fileName}, ${lines} lines`)
@@ -346,6 +346,13 @@ export default class ObfuscationMap {
 									name: foundClass,
 									node: classDeclaration.heritageClauses[i].types[j].expression,
 								})
+
+								let typeArguments = (classDeclaration.heritageClauses[i].types[j].expression.parent as any).typeArguments
+								if(typeArguments) {
+									for(let i = 0; i < typeArguments.length; i++) {
+										obfuscatedClass.typeArguments.push(typeArguments[i].getText())
+									}
+								}
 							}
 						}
 					}
@@ -454,7 +461,7 @@ export default class ObfuscationMap {
 					}	
 				}
 				else {
-					console.warn("Warning: Found undefined symbol in binding statemnet")
+					console.warn(`Warning: Found undefined symbol in binding statemnet ${node.getText()}`)
 					ObfuscationMap.createObfuscatedElement(ObfuscationMap.getClosestScope(node), node.getText(), node, true)
 				}
 				

@@ -3,9 +3,12 @@ import * as fs from "fs"
 // copies over all non ts/tsx files into the out directory
 export default class FileCopy {
 	public static copyFile(fileName: string, directory: string, inDirectory: string, outDirectory: string): void {
-		fs.copyFile(fileName, fileName.replace(inDirectory, outDirectory), (error) => {
-
-		})
+		// make the directory if it doesn't exist
+		let finalDirectory = directory.replace(inDirectory, outDirectory)
+		if(!fs.existsSync(finalDirectory)) {
+			fs.mkdirSync(finalDirectory)
+		}
+		fs.copyFile(fileName, fileName.replace(inDirectory, outDirectory), (error) => {})
 	}
 
 	public static async copyAllFiles(directory: string, inDirectory: string, outDirectory: string): Promise<void> {
