@@ -105,8 +105,6 @@ class GameTicker {
 
 	public static serverTickRate: number = 30
 
-
-
 	constructor(game: Game) {
 		this.game = game
 	}
