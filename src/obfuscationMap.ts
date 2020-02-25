@@ -366,14 +366,42 @@ export default class ObfuscationMap {
 			case ts.SyntaxKind.PropertyDeclaration:
 			case ts.SyntaxKind.GetAccessor:
 			case ts.SyntaxKind.SetAccessor: {
+				function canObfuscate(className: string) {
+					let egg = ObfuscationMap.getObfuscatedClass(className)
+					if(egg && egg.inherits) {
+						for(let inheritedClass of egg.inherits.values()) {
+							for(let type of (inheritedClass.node.parent.parent as any).types) {
+								let symbol = Obfuscator.checker.getTypeAtLocation(type).getSymbol()
+
+								let sourceFile = symbol.declarations[0].parent as ts.SourceFile
+								if(symbol.declarations[0].parent.kind == ts.SyntaxKind.ModuleBlock) {
+									sourceFile = symbol.declarations[0].parent.parent.parent as ts.SourceFile
+								}
+
+								if(sourceFile.fileName.includes("node_modules")) {
+									if(symbol.members.get((node as any).name.getText() as any)) {
+										console.log(`Found library member ${(node as any).name.getText()}, not obfuscating...`)
+										return false
+									}
+								}
+							}
+						}
+					}
+					return true
+				}
+				
 				if(node.parent.kind == ts.SyntaxKind.ClassDeclaration || node.parent.kind == ts.SyntaxKind.InterfaceDeclaration) {
 					let propertyDeclaration = node as ts.PropertyDeclaration
-					ObfuscationMap.createObfuscatedProperty(ObfuscationMap.getObfuscatedClass(propertyDeclaration.parent.name.getText()), propertyDeclaration.name.getText(), node, false)
+					if(canObfuscate(propertyDeclaration.parent.name.getText())) {
+						ObfuscationMap.createObfuscatedProperty(ObfuscationMap.getObfuscatedClass(propertyDeclaration.parent.name.getText()), propertyDeclaration.name.getText(), node, false)
+					}
 				}
 				else if(node.parent.kind == ts.SyntaxKind.TypeLiteral) {
 					let typeLiteral = node.parent as ts.TypeLiteralNode
 					let propertyDeclaration = node as ts.PropertyDeclaration
-					ObfuscationMap.createObfuscatedProperty(ObfuscationMap.getObfuscatedClass(typeLiteral.getText()), propertyDeclaration.name.getText(), node, false)
+					if(canObfuscate(typeLiteral.getText())) {
+						ObfuscationMap.createObfuscatedProperty(ObfuscationMap.getObfuscatedClass(typeLiteral.getText()), propertyDeclaration.name.getText(), node, false)
+					}
 				}
 				break
 			}
@@ -402,6 +430,27 @@ export default class ObfuscationMap {
 					}
 				}
 				else {
+					let egg = methodScope as ObfuscationClass
+					if(egg.inherits) {
+						for(let inheritedClass of egg.inherits.values()) {
+							for(let type of (inheritedClass.node.parent.parent as any).types) {
+								let symbol = Obfuscator.checker.getTypeAtLocation(type).getSymbol()
+
+								let sourceFile = symbol.declarations[0].parent as ts.SourceFile
+								if(symbol.declarations[0].parent.kind == ts.SyntaxKind.ModuleBlock) {
+									sourceFile = symbol.declarations[0].parent.parent.parent as ts.SourceFile
+								}
+
+								if(sourceFile.fileName.includes("node_modules")) {
+									if(symbol.members.get(methodDeclaration.name.getText() as any)) {
+										console.log(`Found library function ${methodDeclaration.name.getText()}, not obfuscating...`)
+										break
+									}
+								}
+							}
+						}
+					}
+					
 					let method = ObfuscationMap.createObfuscatedMethod(methodScope, methodDeclaration.name.getText(), node)
 
 					// loop through its parameters and add them as local variables
@@ -447,7 +496,7 @@ export default class ObfuscationMap {
 			// dealing with binding expressions
 			case ts.SyntaxKind.BindingElement: {
 				let symbol = Obfuscator.checker.getSymbolAtLocation((node.parent.parent as any).initializer)
-
+				
 				if(symbol != undefined) {
 					let typeName = Obfuscator.typeToString(Obfuscator.checker.getTypeOfSymbolAtLocation(symbol, symbol.declarations[0]))
 					if(typeName) {
@@ -461,7 +510,7 @@ export default class ObfuscationMap {
 					}	
 				}
 				else {
-					console.warn(`Warning: Found undefined symbol in binding statemnet ${node.getText()}`)
+					console.warn(`Warning: Found undefined symbol in binding statement ${node.getText()}`)
 					ObfuscationMap.createObfuscatedElement(ObfuscationMap.getClosestScope(node), node.getText(), node, true)
 				}
 				
@@ -475,9 +524,7 @@ export default class ObfuscationMap {
 		return (file) => {
 			function traverseNode(node: ts.Node, context) {
 				ObfuscationMap.echoSourceFile(node)
-
 				ObfuscationMap.handleNode(node)
-				
 				return ts.visitEachChild(node, (childNode) => traverseNode(childNode, context), context)
 			}
 			

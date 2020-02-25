@@ -2,6 +2,7 @@ import * as ts from "typescript";
 import ObfuscationMap from "./obfuscationMap";
 import ObfuscationElement from "./structure/obfuscationElement";
 import * as fs from "fs"
+import { types } from "util";
 
 function breakFilePath(filePath: string): string[] {
 	let match = filePath.match(/(.+\/)*(.+)$/)
@@ -34,7 +35,7 @@ export default class Obfuscator {
 					
 					switch(node.parent.kind) {
 						// dealing with property chains and such
-						case ts.SyntaxKind.PropertyAccessExpression: {
+						case ts.SyntaxKind.PropertyAccessExpression: {							
 							let property = Obfuscator.getPropertyAccessChainType(node, node.parent as ts.PropertyAccessExpression)
 							// console.log(`---- ${node.getText()}'s type is ${property.parentTypeName}`)
 							if(property.symbol) {
@@ -64,6 +65,9 @@ export default class Obfuscator {
 												node = newNode != undefined ? newNode : node
 											}
 										}
+									}
+									else {
+										
 									}
 								}
 								// if we aren't the start, then treat us like a local/global variable
@@ -106,7 +110,8 @@ export default class Obfuscator {
 								// once we got the type, now transform the property
 								if(type) {
 									let typeName = Obfuscator.typeToString(type)
-									let closestScope = ObfuscationMap.getObfuscatedClassesFromType(typeName)
+
+									let closestScope = ObfuscationMap.getObfuscatedClassesFromType(typeName).concat(Obfuscator.interpretWeirdType(type))
 									// get the class from the type name, then get the property value using the class as our scope
 									if(closestScope) {
 										node = changeNode(ts.createIdentifier(ObfuscationMap.getObfuscatedStringFromScope(closestScope, node.getText())))
@@ -178,7 +183,10 @@ export default class Obfuscator {
 								}
 								else {
 									var newNode = Obfuscator.createLocalIdentifier(node)
-									node = newNode != undefined ? newNode : node
+									if(newNode != undefined) {
+										newNode = ts.createIdentifier(`${node.escapedText}: ${(newNode as any).escapedText}`)
+										node = newNode != undefined ? newNode : node
+									}
 								}
 							}
 							break
@@ -356,6 +364,23 @@ export default class Obfuscator {
 				return this.typeToString(this.checker.getTypeOfSymbolAtLocation(parent, parent.declarations[0]))
 			}
 		}
+		else if((symbol as any).getDeclarations()[0] && (symbol as any).getDeclarations()[0].parent && (symbol as any).getDeclarations()[0].parent.name) {
+			return this.sanitizeTypeString((symbol as any).getDeclarations()[0].parent.name.getText()) // will it work?
+		}
+	}
+
+	public static interpretWeirdType(type: ts.Type | any): ObfuscationElement[] {
+		let output = []
+		if(type.types) {
+			for(let type2 of type.types as ts.Type[]) {
+				let typeName = this.typeToString(type2)
+				let foundClass = ObfuscationMap.getObfuscatedClass(typeName)
+				if(foundClass) {
+					output.push(foundClass)
+				}
+			}	
+		}
+		return output
 	}
 
 	public static typeToString(type: ts.Type): string {
@@ -370,6 +395,6 @@ export default class Obfuscator {
 			value = split[split.length - 1]
 		}
 
-		return value.replace("[]", "")
+		return value.replace("[]", "").replace(/Readonly</g, "").replace(/>$/g, "")
 	}
 }

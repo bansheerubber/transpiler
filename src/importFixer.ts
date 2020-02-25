@@ -20,24 +20,25 @@ export default class ImportFixer {
 					if(fs.existsSync(file) || fs.existsSync(file = `${directory.replace(outDirectory, inDirectory)}/${line.match(/(?<=").+(?=")/)}.tsx`)) {
 						let defaultExport = await this.getDefaultExportName(file)
 
-						if(fileName.indexOf("custom/main.js") != -1) {
-							console.log(`default export of ${file}: ${defaultExport}`)
-						}
-
 						if(defaultExport) {
 							let replaceWord = line.match(/(?<=const ).+(?= \=)/g)[0]
 
 							// check to see how many times the word appears in the file
 							if(output.match(new RegExp(replaceWord, "g")).length > 1) {
 								output = output.replace(new RegExp(replaceWord, "g"), ObfuscationMap.getObfuscatedClassString(defaultExport))
-								if(fileName.indexOf("custom/main.js") != -1) {
-									console.log(`import fixer replaced ${replaceWord} in file ${fileName}`)
-								}
 							}
 							else {
 								output = output.replace(line, "") // if we only have 1 instnace of this import name, then remove the import because we don't need it
 							}
 						}
+					}
+				}
+				// dealing with mpm modules, usually the issue here is that the obfuscation is not applied to the import statement. the rest of the file has the obfuscated value.
+				else if(line.match(/const \w+ = require\(\"\w+\"\)/)) {
+					let exportName = line.match(/const (\w+)/)[1]
+					let obfuscation = ObfuscationMap.getObfuscatedFromScope([ObfuscationMap.root], exportName)
+					if(obfuscation) {
+						output = output.replace(line, `const ${obfuscation.obfuscation} = ${line.match(/const (\w+) = (.+)/)[2]}`)
 					}
 				}
 			}

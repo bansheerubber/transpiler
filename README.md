@@ -1,4 +1,4 @@
-uses the Typescript Compiler API to transpile typescript into obfuscated javascript. intelligently chooses which symbols to obfuscate, and avoids obfuscating symbols that are not defined in the source code (unlike other obfuscator libraries, where you have to blacklist certain global symbols from obfuscation).   
+uses the Typescript Compiler API to transpile typescript into obfuscated javascript. intelligently chooses which symbols to obfuscate, and avoids obfuscating symbols that are not defined in the source code (unlike other obfuscator libraries, where you have to blacklist certain global symbols from obfuscation). the resulting JS code can then be minified, or run in NodeJS.  
 
 the primary purpose for this program is to compile eggine2d. there are some macros applied to eggine2d code to make networking features easier to program and maintain. however, the key feature is the powerful obfuscation:   
 
