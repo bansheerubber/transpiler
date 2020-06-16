@@ -22,10 +22,16 @@ export default class ImportFixer {
 
 						if(defaultExport) {
 							let replaceWord = line.match(/(?<=const ).+(?= \=)/g)[0]
+							let obfuscation = ObfuscationMap.getObfuscatedClassString(defaultExport)
 
 							// check to see how many times the word appears in the file
-							if(output.match(new RegExp(replaceWord, "g")).length > 1) {
-								output = output.replace(new RegExp(replaceWord, "g"), ObfuscationMap.getObfuscatedClassString(defaultExport))
+							let otherMatch = output.match(new RegExp(obfuscation, "g"))
+							if(output.match(new RegExp(replaceWord, "g")).length > 1 || (otherMatch && otherMatch.length >= 1)) {
+								if(otherMatch && otherMatch.length >= 1) {
+									output = output.replace(new RegExp(obfuscation, "g"), `${obfuscation}.default`)
+								}
+								
+								output = output.replace(new RegExp(replaceWord, "g"), obfuscation)
 							}
 							else {
 								output = output.replace(line, "") // if we only have 1 instnace of this import name, then remove the import because we don't need it

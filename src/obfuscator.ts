@@ -30,7 +30,7 @@ export default class Obfuscator {
 					return newNode
 				}
 				
-				if(node.kind == ts.SyntaxKind.Identifier) {
+				if(node.kind == ts.SyntaxKind.Identifier && node.parent) {
 					// console.log(node.getText(), Obfuscator.kindToName(node.parent.kind))
 					
 					switch(node.parent.kind) {

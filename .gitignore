@@ -3,7 +3,8 @@
 # exclude built stuff
 build/client/
 build/out/
-
+# exclude dist
+dist/
 
 
 # Logs

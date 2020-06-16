@@ -16,6 +16,7 @@ let obfuscate = true
 let inDirectory = args[0]
 let rustDirectory = args[1]
 let outDirectory = args[2]
+let networkFile = args[3]
 
 if(fs.existsSync(inDirectory)) {
 	for(let arg of args) {
@@ -65,6 +66,8 @@ if(fs.existsSync(inDirectory)) {
 		console.log(`${ObfuscationMap.root.getCount()} obfuscated names generated`)
 		console.log(`${ObfuscationMap.totalLines} lines processed`)
 	}
+
+	NewExpressionTransformer.networkFile = networkFile
 
 	let transformers = [NewExpressionTransformer.transformer, StringNormalizer.transformer]
 	if(obfuscate) {
