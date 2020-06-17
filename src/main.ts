@@ -44,7 +44,7 @@ if(fs.existsSync(inDirectory)) {
 	}
 	readDir(inDirectory)
 
-	console.log("Transpiler: r22")
+	console.log("Transpiler: r23")
 
 	if(obfuscate) {
 		console.log("Generating obfuscation tree...")

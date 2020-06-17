@@ -7,6 +7,9 @@ export default class NewExpressionTransformer {
 	public static positionId: number = 0
 	public static debug: boolean = true
 	public static networkFile: string = ""
+	public static positionIdMap: {
+		[index: string]: number
+	} = {}
 
 	public static transformer(context) {
 		return (file) => {
@@ -42,6 +45,36 @@ export default class NewExpressionTransformer {
 	
 			return visiter(file, context)
 		}
+	}
+
+	public static getClass(node: ts.Node): string {
+		let parent = node
+		while((parent = parent.parent) !== undefined) {
+			if(parent.kind == ts.SyntaxKind.ClassDeclaration) {
+				return (parent as ts.ClassDeclaration).name.getText()
+			}
+		}
+		return undefined
+	}
+
+	public static getParent(node: ts.Node): string {
+		let parent = node
+		while((parent = parent.parent) !== undefined) {
+			if(parent.kind == ts.SyntaxKind.ClassDeclaration) {
+				let parentClass = parent as ts.ClassDeclaration
+				if(parentClass.heritageClauses) {
+					for(let i = 0; i < parentClass.heritageClauses.length; i++) {
+						for(let j = 0; j < parentClass.heritageClauses[i].types.length; j++) {
+							let foundClass = parentClass.heritageClauses[i].types[j].expression.getText()
+							if(foundClass) {
+								return foundClass
+							}
+						}
+					}
+				}
+			}
+		}
+		return undefined
 	}
 
 	public static isInReconstructor(node: ts.Node): boolean {
@@ -80,6 +113,12 @@ export default class NewExpressionTransformer {
 
 	// creates a replacement for the new expression, for networking purposes
 	public static createNewReplacement(classIdentifier: ts.Identifier, positionId: number, args: ts.NodeArray<ts.Expression>): ts.Node {
+		let className = this.getClass(classIdentifier)
+		let parentName = this.getParent(classIdentifier)
+
+		positionId += !this.positionIdMap[parentName] ? 0 : this.positionIdMap[parentName]
+		this.positionIdMap[className] = positionId + 1// save position id
+		
 		if(NewExpressionTransformer.debug) {
 			console.log(`NewExpressionTransformer: Created 'Network.createRemoteClass(this, ${positionId}, ${classIdentifier.getText()}, ...)'`)
 		}
